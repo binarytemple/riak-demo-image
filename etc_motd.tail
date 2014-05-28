@@ -1,0 +1,12 @@
+A single node Riak cluster is installed and running on this system.
+
+Non-default configuration specific to this demo instance:
+- ring creation size has been changed from 64 to 16.
+- storage backend has been changed from Bitcask to LevelDB.
+
+Search docs.basho.com for more information on these configuration options.
+
+Review the README files for Developers and Operators for more information:
+- /root/Riak_For_Developers.README
+- /root/Riak_For_Operators.README
+
