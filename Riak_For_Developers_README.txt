@@ -12,3 +12,4 @@ Ruby - gem list --local riak-client
 
 For guides to help you with your first interaction with Riak 
 check out http://docs.basho.com/riak/latest/dev/taste-of-riak/
+

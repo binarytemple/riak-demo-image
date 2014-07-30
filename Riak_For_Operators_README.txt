@@ -33,3 +33,4 @@ Basho Bench is included on this demo instance to allow familiarisation with the
 configuration of benchmarking scenarios. Performance characteristics of a single
 development node running in Virtualbox should not be considered representative of
 achievable performance on any other hardware.
+
