@@ -29,7 +29,7 @@ the VirtualBox menu, and follow the wizard selecting basho_riak.ova as the
 appliance to import.
 
 Start the virtual appliance and at the login prompt use the following credentials:
-Username: riak
+Username: root
 Password: basho
 
 
