@@ -13,7 +13,9 @@ sudo su -
 # set ulimits
 echo \
 "* soft nofile 65536
-* hard nofile 65536" \
+* hard nofile 65536
+root soft nofile 65536
+root hard nofile 65536" \
 >> /etc/security/limits.conf
 
 echo \
@@ -47,7 +49,6 @@ net.core.netdev_max_backlog = 300000" \
 # make changes effective
 sysctl -p
 
-
 ## installation
 
 # update apt-get
@@ -61,12 +62,12 @@ apt-get install build-essential libncurses5-dev openssl libssl-dev fop xsltproc 
 
 # download and install erlang
 cd
-wget http://erlang.org/download/otp_src_R15B01.tar.gz
-tar zxvf otp_src_R15B01.tar.gz
-cd otp_src_R15B01
+wget http://s3.amazonaws.com/downloads.basho.com/erlang/otp_src_R16B02-basho5.tar.gz
+tar zxvf otp_src_R16B02-basho5.tar.gz
+cd otp_src_R16B02-basho5
 ./configure && make && make install
 cd
-rm -rf otp_src_R15B01 otp_src_R15B01.tar.gz
+rm -rf otp_src_R16B02-basho5 otp_src_R16B02-basho5.tar.gz
 
 # clone and install basho_bench
 cd
@@ -74,131 +75,38 @@ git clone git://github.com/basho/basho_bench.git
 cd basho_bench
 make
 
-# get signing key
-curl http://apt.basho.com/gpg/basho.apt.key | apt-key add -
+# install riak dependencies
+apt-get install libpam0g-dev -y
 
-# add basho repo
-echo deb http://apt.basho.com $(lsb_release -sc) main > /etc/apt/sources.list.d/basho.list
-apt-get update
+# clone and install riak
+cd /
+git clone git://github.com/basho/riak.git
+cd riak
+make rel
+make devrel DEVNODES=5
 
-# install riak
-apt-get install riak -y
+# modify riak.conf
+find /riak -name riak.conf | grep dev | xargs sed \
+-e "s/## ring_size = 64/ring_size = 16/" \
+-e "s/## strong_consistency = on/strong_consistency = on/" \
+-e "s/storage_backend = bitcask/storage_backend = leveldb/" \
+-e "s/search = off/search = on/" \
+-e "s/search.solr.jvm_options = -d64 -Xms1g -Xmx1g -XX:+UseStringCache -XX:+UseCompressedOops/search.solr.jvm_options = -d64 -Xms128m -Xmx128m -XX:+UseStringCache -XX:+UseCompressedOops/" \
+-i.bak
 
-# modify app.config
-sed -e "s/127.0.0.1/0.0.0.0/g" \
-         -e "s/%{ring_creation_size, 64}/{ring_creation_size, 16}/" \
-         -e "s/riak_kv_bitcask_backend/riak_kv_eleveldb_backend/" \
-         -i.bak /etc/riak/app.config
+# change sshd config to PermitRootLogin yes
+sed -e "s/PermitRootLogin without-password/PermitRootLogin yes/" /etc/ssh/sshd_config
+service ssh restart
 
 # set root password
 echo "root:basho" | chpasswd
 
-# set motd
-figlet riak demo > /etc/motd.tail
-
-# echo some useful dev info to a file
-cd
-echo \
-"Riak For Developers
-===================
-
-The following clients are installed and ready 
-for testing with Riak on this demo instance:
-
-Erlang - /riak-erlang-client
-Java - /riak-java-client
-PHP - /riak-php-client
-Python - pip search riak
-Ruby - gem list --local riak-client
-
-For guides to help you with your first interaction with Riak 
-check out http://docs.basho.com/riak/latest/dev/taste-of-riak/
-
-" \
-> Riak_For_Developers.README
-
-# echo some useful ops info to a file
-cd
-echo \
-"Riak For Operators
-==================
-
-Usage: riak {start | stop| restart | reboot | ping | console | attach | 
-                    attach-direct | ertspath | chkconfig | escript | version | 
-                    getpid | top [-interval N] [-sort reductions|memory|msg_q] [-lines N] }
-
-Usage: riak-admin { cluster | join | leave | backup | restore | test | 
-                    reip | js-reload | erl-reload | wait-for-service | 
-                    ringready | transfers | force-remove | down |
-                    cluster-info | member-status | ring-status | vnode-status |
-                    aae-status | diag | status | transfer-limit | reformat-indexes |
-                    top [-interval N] [-sort reductions|memory|msg_q] [-lines N] |
-                    downgrade-objects | repair-2i }
-
-File Locations:
-Configuration files: /etc/riak
-Data files: /var/lib/riak
-Log files: /var/log/riak
-
-Ports:
-HTTP Port: 8098
-Protocol Buffers Port: 8087
-
-See http://docs.basho.com for further guidance on 
-cluster installation, tuning and management.
-
-Basho Bench
------------
-
-Basho Bench is a load generation tool provided for performance testing a cluster.
-Basho Bench is included on this demo instance to allow familiarisation with the
-configuration of benchmarking scenarios. Performance characteristics of a single
-development node running in Virtualbox should not be considered representative of
-achievable performance on any other hardware. 
-
-" \
-> Riak_For_Operators.README
-
-# add some more useful MOTD info here
-echo \
-"A single node Riak cluster is installed and running on this system.
-
-Non-default configuration specific to this demo instance:
-- ring creation size has been changed from 64 to 16.
-- storage backend has been changed from Bitcask to LevelDB.
-
-Search docs.basho.com for more information on these configuration options.
-
-Review the README files for Developers and Operators for more information:
-- /root/Riak_For_Developers.README
-- /root/Riak_For_Operators.README
-
-" \
->> /etc/motd.tail
-
-
-## install riak clients and any supporting code from docs.basho.com
-
-# get java client
-cd && mkdir riak-java-client && cd riak-java-client
-wget http://riak-java-client.s3.amazonaws.com/riak-client-1.1.4-jar-with-dependencies.jar https://github.com/basho/basho_docs/raw/master/source/data/TasteOfRiak.java
-
-# install python client
-apt-get install python-pip -y && pip install riak
-
 # install ruby client
 apt-get install ruby1.9.1 -y && gem install riak-client
 
-# install erlang client
-cd
-apt-get install erlang-parsetools erlang-dev erlang-syntax-tools -y
-git clone git://github.com/basho/riak-erlang-client.git
-cd riak-erlang-client && make
-
-# install php client
-cd
-apt-get install php5-cli php5-curl -y
-git clone git://github.com/basho/riak-php-client.git
+# try to minimise VM size
+dd if=/dev/zero of=/EMPTY bs=1M
+rm -rf /EMPTY
 
 # shutdown after setup
 shutdown -h now
