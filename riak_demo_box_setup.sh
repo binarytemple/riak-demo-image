@@ -108,5 +108,8 @@ apt-get install ruby1.9.1 -y && gem install riak-client
 dd if=/dev/zero of=/EMPTY bs=1M
 rm -rf /EMPTY
 
+# remove persistent network device rules, they cause problems with duplicate virtual network devices
+rm -f /etc/udev/rules.d/70-persistent-net.rules
+
 # shutdown after setup
 shutdown -h now
